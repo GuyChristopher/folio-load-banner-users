@@ -1,9 +1,11 @@
 #! /usr/bin/perl
 
-require 'getOkapiToken.pl'; 
+open(w,">postUsersPerBanner.txt");
 
-use JSON;
+require '/opt/folio/okapi-tokens/getOkapiToken.pl'; 
+
 use DateTime;
+use JSON;
 
 $addressTypes= `curl -s -X GET -G -H '$jsonHeader' -H '$xOkapiToken' $baseURL/addresstypes?id="*"`; 
 $hash = decode_json $addressTypes; 
@@ -39,15 +41,10 @@ for ( @{$hash->{usergroups}} ) {
 }
 
 foreach $line (@userData) {
-	
 	@parsed = split(/\|/,$line);
-	
 	if ($thisUser{$parsed[0]} eq $parsed[1]) {
-		
 		$note2self = qq[this user is already in the system];
-		
 	} else {
-		
 		if ($parsed[19] eq "Y" || $parsed[20] eq "Y") {
 
 			$active = qq["active":true,];
@@ -60,7 +57,7 @@ foreach $line (@userData) {
 
 			$expirationDate = qq["expirationDate":"];
 			if ($parsed[20] eq "Y") {
-				$expirationDate .= $expDate4facStaff;
+				$expirationDate .= $expDate4FacStaff;
 			} else {
 				$expirationDate .= $expDate4Students;
 			}
@@ -117,11 +114,13 @@ foreach $line (@userData) {
 
 			$data = qq[{$username $externalSystemId $barcode $active $type $patronGroup $personal $enrollmentDate $expirationDate $metadata}]; 
 			$data =~ s/'/'\\''/g; 
-			$post = `curl -s -X POST -H '$jsonHeader' -H '$xOkapiToken' -d '$data' $baseURL/users`;
-		 	
+			$postUsers = `curl -s -X POST -H '$jsonHeader' -H '$xOkapiToken' -d '$data' $baseURL/users`;
+			$hash = decode_json $postUsers;
+			$logThis = $countNewUsers . " " . $hash->{'id'} . " " . $hash->{'username'} . " " . $parsed[0];
+			print "$logThis\n";
+			print w "$logThis\n";
 		}
 	}
 }
 
-print "$countNewUsers users have been POSTed\n";
-
+close(w);
